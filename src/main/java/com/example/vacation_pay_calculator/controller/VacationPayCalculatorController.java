@@ -6,6 +6,7 @@ import com.example.vacation_pay_calculator.service.VacationPayCalculatorService;
 import lombok.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,13 +23,11 @@ public class VacationPayCalculatorController {
         this.vacationPayCalculatorService = vacationPayCalculatorService;
     }
 
-    @GetMapping("/calculaсte")
+    @GetMapping("/calculate")
     public ResponseEntity<CalculateVacationPayResponse> calculate (
-            @RequestParam("averageSalary") @Valid @Positive double averageSalary,
-            @RequestParam("vacationDays") @Valid @Min(1) int vacationDays) {
-        CalculateVacationPayRequest request = new CalculateVacationPayRequest(averageSalary, vacationDays);
-        CalculateVacationPayResponse response = vacationPayCalculatorService.calculate(request);
+            @Valid @ModelAttribute CalculateVacationPayRequest request) {
 
+        CalculateVacationPayResponse response = vacationPayCalculatorService.calculate(request);
         return ResponseEntity.ok(response);
     }
 }
