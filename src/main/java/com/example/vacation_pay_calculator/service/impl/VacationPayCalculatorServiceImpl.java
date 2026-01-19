@@ -15,6 +15,13 @@ public class VacationPayCalculatorServiceImpl implements VacationPayCalculatorSe
 
     @Override
     public CalculateVacationPayResponse calculate(CalculateVacationPayRequest request) {
+        if (request.getAverageSalary() <= 0) {
+            throw new IllegalArgumentException("The average salary should be non-negative");
+        }
+        if (request.getVacationDays() < 1) {
+            throw new IllegalArgumentException("The number of vacation days must be at least 1");
+        }
+
         BigDecimal salary = BigDecimal.valueOf(request.getAverageSalary());
         BigDecimal days = BigDecimal.valueOf(request.getVacationDays());
 
