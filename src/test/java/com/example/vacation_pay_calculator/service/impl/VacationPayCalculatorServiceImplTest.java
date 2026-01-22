@@ -2,22 +2,42 @@ package com.example.vacation_pay_calculator.service.impl;
 
 import com.example.vacation_pay_calculator.dto.CalculateVacationPayRequest;
 import com.example.vacation_pay_calculator.dto.CalculateVacationPayResponse;
+import com.example.vacation_pay_calculator.service.HolidayService;
 import com.example.vacation_pay_calculator.service.VacationPayCalculatorService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 public class VacationPayCalculatorServiceImplTest {
 
-    private final VacationPayCalculatorService service = new VacationPayCalculatorServiceImpl();
+    @Mock
+    private HolidayService holidayService;
+
+    private VacationPayCalculatorService service;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        service = new VacationPayCalculatorServiceImpl(holidayService);
+    }
 
     @Test
     public void shouldCalculateCorrectlyForTypicalCase() {
         // Given: средняя зарплата 15 000 ₽, отпуск 14 дней
-        CalculateVacationPayRequest request = new CalculateVacationPayRequest(15000.0, 14);
+        CalculateVacationPayRequest request = new CalculateVacationPayRequest(15000.0, 14, null, null);
 
         // When: рассчитываем отпускные
         CalculateVacationPayResponse response = service.calculate(request);
@@ -30,7 +50,7 @@ public class VacationPayCalculatorServiceImplTest {
     @Test
     public void shouldCalculateCorrectlyForOneVacationDayCase() {
         // Given: средняя зарплата 15 000 ₽, отпуск 1 день
-        CalculateVacationPayRequest request = new CalculateVacationPayRequest(15000.0, 1);
+        CalculateVacationPayRequest request = new CalculateVacationPayRequest(15000.0, 1, null, null);
 
         // When: рассчитываем отпускные
         CalculateVacationPayResponse response = service.calculate(request);
@@ -43,7 +63,7 @@ public class VacationPayCalculatorServiceImplTest {
     @Test
     public void shouldThrowExceptionWhenSalaryIsNegative() {
         // Given: средняя зарплата -15 000 ₽, отпуск 14 дней
-        CalculateVacationPayRequest request = new CalculateVacationPayRequest(-15000.0, 14);
+        CalculateVacationPayRequest request = new CalculateVacationPayRequest(-15000.0, 14, null, null);
 
         // When + Then: ожидаем получить исключение при расчете отпускных
         assertThatThrownBy(() -> service.calculate(request))
@@ -54,11 +74,41 @@ public class VacationPayCalculatorServiceImplTest {
     @Test
     public void shouldThrowExceptionWhenVacationDaysIsZero() {
         // Given: средняя зарплата 15 000 ₽, отпуск 0 дней
-        CalculateVacationPayRequest request = new CalculateVacationPayRequest(15000.0, 0);
+        CalculateVacationPayRequest request = new CalculateVacationPayRequest(15000.0, 0, null, null);
 
         // When + Then: ожидаем получить исключение при расчете отпускных
         assertThatThrownBy(() -> service.calculate(request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The number of vacation days must be at least 1");
+    }
+
+    @Test
+    public void shouldCalculateCorrectlyByDatesWhenNoHolidays() {
+        // Given: 5 дней без праздников
+        LocalDate start = LocalDate.of(2026, 5, 12); // вторник
+        LocalDate end   = LocalDate.of(2026, 5, 16); // суббота (5 дней)
+        // 12–16 мая 2026: нет праздников
+
+        CalculateVacationPayRequest request = CalculateVacationPayRequest.builder()
+                .averageSalary(15000.0)
+                .vacationDays(0) // не используется
+                .startDate(start)
+                .endDate(end)
+                .build();
+
+        // Mock: все дни — не праздники
+        when(holidayService.isHoliday(any(LocalDate.class))).thenReturn(false);
+
+        // When
+        CalculateVacationPayResponse response = service.calculate(request);
+
+        // Then: 5 дней × (15000 / 29.3)
+        BigDecimal daily = BigDecimal.valueOf(15000)
+                .divide(BigDecimal.valueOf(29.3), 10, RoundingMode.HALF_UP);
+        BigDecimal expected = daily.multiply(BigDecimal.valueOf(5))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        assertThat(response.getVacationPay())
+                .isEqualByComparingTo(expected);
     }
 }
