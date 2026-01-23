@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cglib.core.Local;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -110,5 +112,51 @@ public class VacationPayCalculatorServiceImplTest {
 
         assertThat(response.getVacationPay())
                 .isEqualByComparingTo(expected);
+    }
+
+    @Test
+    public void shouldCalculateByDatesExcludingHolidayInPeriod() {
+        //Given: 23–27 февраля 2026 (5 дней, 23 февраля — праздник)
+        LocalDate start = LocalDate.of(2026, 2, 23);
+        LocalDate end = LocalDate.of(2026, 2, 27);
+
+        CalculateVacationPayRequest request = CalculateVacationPayRequest.builder()
+                .averageSalary(40000.0)
+                .startDate(start)
+                .endDate(end)
+                .build();
+
+        //Mock: только 23 февраля — праздник, остальные дни — нет
+        when(holidayService.isHoliday(eq(LocalDate.of(2026, 2, 23)))).thenReturn(true);
+
+        //When
+        CalculateVacationPayResponse response = service.calculate(request);
+
+        //Then: 4 оплачиваемых дня и 1 праздник
+        BigDecimal daily = BigDecimal.valueOf(40000)
+                .divide(BigDecimal.valueOf(29.3), 10, RoundingMode.HALF_UP);
+        BigDecimal expected = daily.
+                multiply(BigDecimal.valueOf(4))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        assertThat(response.getVacationPay()).isEqualByComparingTo(expected);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenEndDateBeforeStartDate() {
+        //Given: некорректный период
+        LocalDate start = LocalDate.of(2026, 2, 27);
+        LocalDate end = LocalDate.of(2026, 2, 23);
+
+        CalculateVacationPayRequest request = CalculateVacationPayRequest.builder()
+                .averageSalary(40000.0)
+                .startDate(start)
+                .endDate(end)
+                .build();
+
+        //When + Then
+        assertThatThrownBy(() -> service.calculate(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The end date must be later than or equal to the start date");
     }
 }
