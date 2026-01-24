@@ -4,7 +4,6 @@ import com.example.vacation_pay_calculator.dto.CalculateVacationPayRequest;
 import com.example.vacation_pay_calculator.dto.CalculateVacationPayResponse;
 import com.example.vacation_pay_calculator.service.HolidayService;
 import com.example.vacation_pay_calculator.service.VacationPayCalculatorService;
-import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,7 +14,6 @@ import java.time.temporal.ChronoUnit;
 @Service
 public class VacationPayCalculatorServiceImpl implements VacationPayCalculatorService {
     private static final BigDecimal AVERAGE_DAYS_PER_MONTH = BigDecimal.valueOf(29.3);
-    private static final int MONTHS_IN_YEAR = 12;
 
     private final HolidayService holidayService;
 
@@ -25,12 +23,17 @@ public class VacationPayCalculatorServiceImpl implements VacationPayCalculatorSe
 
     @Override
     public CalculateVacationPayResponse calculate(CalculateVacationPayRequest request) {
-        if (request.getAverageSalary() <= 0) {
-            throw new IllegalArgumentException("The average salary should be non-negative");
+
+        if (request.getAverageSalary() == null) {
+            throw new IllegalArgumentException("The average salary should not be null");
+        }
+
+        if (request.getAverageSalary() <= 0.0) {
+            throw new IllegalArgumentException("The average salary should be more than zero");
         }
 
         BigDecimal salary = BigDecimal.valueOf(request.getAverageSalary());
-        BigDecimal dailyRate = salary.divide(BigDecimal.valueOf(29.3), 10, RoundingMode.HALF_UP);
+        BigDecimal dailyRate = salary.divide(AVERAGE_DAYS_PER_MONTH, 10, RoundingMode.HALF_UP);
 
         LocalDate start = request.getStartDate();
         LocalDate end = request.getEndDate();
