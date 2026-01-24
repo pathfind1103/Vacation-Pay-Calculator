@@ -10,7 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cglib.core.Local;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -70,7 +69,7 @@ public class VacationPayCalculatorServiceImplTest {
         // When + Then: ожидаем получить исключение при расчете отпускных
         assertThatThrownBy(() -> service.calculate(request))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("The average salary should be non-negative");
+                .hasMessage("The average salary should be more than zero");
     }
 
     @Test
