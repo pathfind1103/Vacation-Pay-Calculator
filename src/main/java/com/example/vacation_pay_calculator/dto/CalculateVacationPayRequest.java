@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import javax.validation.constraints.AssertFalse;
 import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Positive;
@@ -18,7 +17,7 @@ import java.time.LocalDate;
 public class CalculateVacationPayRequest {
 
     @Positive(message = "The average salary should be a positive number")
-    double averageSalary;
+    Double averageSalary;
 
     @Min(value = 1, message = "The number of vacation days must be at least 1")
     Integer vacationDays;
@@ -29,7 +28,7 @@ public class CalculateVacationPayRequest {
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     LocalDate endDate;
 
-    @AssertTrue(message = "The end date must be later than or equal to the start date")
+    @AssertTrue(message = "Both start date and end date must be provided, and end date must be later than or equal to start date")
     private boolean isDatesValid() {
         if (startDate == null && endDate == null) {
             return true;
@@ -40,6 +39,17 @@ public class CalculateVacationPayRequest {
         }
 
         return !endDate.isBefore(startDate);
+    }
+
+    @AssertTrue(message = "Vacation days must be specified when start date and end date are not provided")
+    private boolean isSimpleValid() {
+        if (startDate == null && endDate == null) {
+            if (vacationDays == null) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
 }
